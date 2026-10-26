@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # VoltPulse - Electricity Usage & Cost Analyser
 
 VoltPulse is a high-performance, responsive electricity intelligence platform built to monitor, analyze, and optimize residential and light commercial power consumption, electricity bills, carbon footprints, and appliance loads.
@@ -106,3 +107,6 @@ Electricity_usage_Analyser/
 
 ## 📄 License
 This project is open-source under the [MIT License](LICENSE).
+=======
+# Electricity-Usage-Analyser
+>>>>>>> 39d30db303c5dcc56ebf5400f5b77ed9ed5d4037
