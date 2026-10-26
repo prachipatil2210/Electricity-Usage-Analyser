@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VoltPulse - Smart Electricity Usage & Cost Analyser</title>
+    <meta name="description" content="State-of-the-art electricity usage, smart meter telemetry, appliance disaggregation, tariff cost calculator, and carbon footprint analyser.">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    
+    <!-- Application Stylesheet -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="app-container">
+        
+        <!-- Header & Top Navigation Bar -->
+        <header class="navbar">
+            <div class="brand-wrapper">
+                <div class="brand-icon">⚡</div>
+                <div>
+                    <h1 class="brand-title">VoltPulse</h1>
+                    <div class="brand-tagline">Electricity Usage & Cost Intelligence</div>
+                </div>
+            </div>
+
+            <!-- Main Page View Navigation Tabs -->
+            <nav class="nav-tabs-wrapper" aria-label="Dashboard Views">
+                <button class="nav-tab-btn active" data-tab="tab-overview" id="btn-tab-overview">
+                    📊 Overview Dashboard
+                </button>
+                <button class="nav-tab-btn" data-tab="tab-appliances" id="btn-tab-appliances">
+                    🔌 Appliance Power Audit
+                </button>
+                <button class="nav-tab-btn" data-tab="tab-data" id="btn-tab-data">
+                    💾 Data Management & Ingestion
+                </button>
+            </nav>
+
+            <div class="nav-actions">
+                <div id="live-status-badge" class="status-badge live-active">
+                    <span class="blinking-dot"></span> LIVE TELEMETRY
+                </div>
+
+                <select id="currency-select" class="custom-select" title="Select Currency">
+                    <option value="USD">USD ($)</option>
+                    <option value="INR">INR (₹)</option>
+                </select>
+
+                <select id="tariff-model-select" class="custom-select" title="Tariff Billing Model">
+                    <option value="tou">Time-of-Use (ToU)</option>
+                    <option value="tiered">Tiered Slabs</option>
+                    <option value="flat">Flat Rate</option>
+                </select>
+
+                <button id="tariff-settings-btn" class="btn btn-secondary" title="Configure Rates">
+                    ⚙️ Rates
+                </button>
+
+                <button id="theme-toggle-btn" class="btn btn-secondary btn-icon" title="Toggle Dark/Light Mode">
+                    🌓
+                </button>
+            </div>
+        </header>
+
+        <!-- Live Telemetry Banner (Visible across views) -->
+        <section class="telemetry-banner" id="telemetry-banner">
+            <div class="telemetry-info">
+                <div class="telem-stat-item">
+                    <span class="telem-stat-label">Grid Voltage</span>
+                    <span class="telem-stat-val" id="live-voltage-val">230.4 V</span>
+                </div>
+                <div class="telem-stat-item">
+                    <span class="telem-stat-label">Active Current</span>
+                    <span class="telem-stat-val" id="live-current-val">8.35 A</span>
+                </div>
+                <div class="telem-stat-item">
+                    <span class="telem-stat-label">Power Factor</span>
+                    <span class="telem-stat-val" id="live-pf-val">0.96</span>
+                </div>
+                <div class="telem-stat-item">
+                    <span class="telem-stat-label">Frequency</span>
+                    <span class="telem-stat-val">50.0 Hz</span>
+                </div>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 16px;">
+                <div class="telem-chart-box">
+                    <canvas id="liveStreamChart"></canvas>
+                </div>
+                <button id="live-toggle-btn" class="btn btn-secondary" style="font-size: 12px;">Pause Live Stream</button>
+            </div>
+        </section>
+
+        <!-- =========================================================================
+             PAGE VIEW 1: OVERVIEW DASHBOARD
+             ========================================================================= -->
+        <div id="tab-overview" class="view-page active">
+            <!-- KPI Metrics Grid -->
+            <section class="kpi-grid">
+                <!-- 1. Live Demand -->
+                <div class="glass-card kpi-card">
+                    <div class="kpi-header">
+                        <span class="kpi-title">Current Load</span>
+                        <span class="kpi-icon-pill">⚡</span>
+                    </div>
+                    <div class="kpi-main-val" id="kpi-live-kw">1.85 kW</div>
+                    <div class="kpi-sub-text">Cost Rate: <span id="kpi-live-cost-rate" style="color: var(--primary-blue); font-weight:600;">$0.33/hr</span></div>
+                </div>
+
+                <!-- 2. Today's Energy -->
+                <div class="glass-card kpi-card">
+                    <div class="kpi-header">
+                        <span class="kpi-title">Today's Consumption</span>
+                        <span class="kpi-icon-pill">📅</span>
+                    </div>
+                    <div class="kpi-main-val" id="kpi-today-kwh">28.4 kWh</div>
+                    <div class="kpi-sub-text">Daily Cost: <span id="kpi-today-cost" style="color: var(--emerald-dark); font-weight:600;">$5.82</span></div>
+                </div>
+
+                <!-- 3. Monthly Projection & Budget -->
+                <div class="glass-card kpi-card">
+                    <div class="kpi-header">
+                        <span class="kpi-title">Projected Monthly Bill</span>
+                        <span class="kpi-icon-pill">💳</span>
+                    </div>
+                    <div class="kpi-main-val" id="kpi-month-proj-cost">14054</div>
+                    <div class="kpi-sub-text" id="kpi-month-proj-kwh">Est. 845 kWh total</div>
+                    <div class="progress-bar-wrap">
+                        <div class="progress-bar-fill" id="kpi-budget-progress" style="width: 82%;"></div>
+                    </div>
+                    <div class="kpi-sub-text" id="kpi-budget-text" style="margin-top: 4px;">82% of $180 budget cap</div>
+                </div>
+
+                <!-- 4. Carbon Footprint -->
+                <div class="glass-card kpi-card">
+                    <div class="kpi-header">
+                        <span class="kpi-title">Carbon Footprint</span>
+                        <span class="kpi-icon-pill">🌱</span>
+                    </div>
+                    <div class="kpi-main-val" id="kpi-carbon-kg">325.3 kg</div>
+                    <div class="kpi-sub-text" id="kpi-carbon-trees">Requires ~180 trees to offset</div>
+                </div>
+
+                <!-- 5. Energy Efficiency Score -->
+                <div class="glass-card kpi-card">
+                    <div class="kpi-header">
+                        <span class="kpi-title">Efficiency Rating</span>
+                        <span class="kpi-icon-pill">🏆</span>
+                    </div>
+                    <div class="kpi-main-val">
+                        <span id="kpi-efficiency-score">86/100</span>
+                        <span id="kpi-efficiency-grade" class="badge-grade">Grade A</span>
+                    </div>
+                    <div class="kpi-sub-text">Top 15% in home efficiency</div>
+                </div>
+
+                <!-- 6. Vampire Baseload -->
+                <div class="glass-card kpi-card">
+                    <div class="kpi-header">
+                        <span class="kpi-title">Phantom / Vampire Drain</span>
+                        <span class="kpi-icon-pill">🦇</span>
+                    </div>
+                    <div class="kpi-main-val" id="kpi-baseload-watts">320 W</div>
+                    <div class="kpi-sub-text" id="kpi-baseload-cost">Est. 4050 / yr standby loss</div>
+                </div>
+            </section>
+
+            <!-- Dashboard Analytics Grid -->
+            <div class="dashboard-layout">
+                <!-- Main Charts Column -->
+                <div class="main-column">
+                    <!-- 24-Hour Load Profile Chart -->
+                    <div class="glass-card chart-card">
+                        <div class="chart-header">
+                            <div class="chart-title-group">
+                                <h3>24-Hour Hourly Load Curve</h3>
+                                <div class="chart-subtitle">Demand curve with Time-of-Use Peak (2 PM - 8 PM) & Off-Peak categorization</div>
+                            </div>
+                            <div style="display:flex; gap:8px;">
+                                <span class="status-badge" style="background: #FEF2F2; color: #DC2626; border: 1px solid #FECACA;">● On-Peak</span>
+                                <span class="status-badge" style="background: #FFFBEB; color: #D97706; border: 1px solid #FDE68A;">● Mid-Peak</span>
+                                <span class="status-badge" style="background: #F0F9FF; color: #0284C7; border: 1px solid #BAE6FD;">● Off-Peak</span>
+                            </div>
+                        </div>
+                        <div class="chart-canvas-wrapper">
+                            <canvas id="hourlyLoadChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- 30-Day Trend Chart -->
+                    <div class="glass-card chart-card">
+                        <div class="chart-header">
+                            <div class="chart-title-group">
+                                <h3>Past 30 Days Consumption & Solar Offset</h3>
+                                <div class="chart-subtitle">Daily Off-peak vs On-peak consumption stacked with solar generation</div>
+                            </div>
+                        </div>
+                        <div class="chart-canvas-wrapper">
+                            <canvas id="dailyTrendChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Side Summary Column -->
+                <div class="side-column">
+                    <!-- Anomaly & Spike Detection Section -->
+                    <div class="glass-card chart-card">
+                        <div class="chart-header">
+                            <div class="chart-title-group">
+                                <h3>Anomaly & Demand Spike Monitor</h3>
+                                <div class="chart-subtitle">Automatic surge detection exceeding baselines</div>
+                            </div>
+                        </div>
+                        <div id="anomaly-container">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+
+                    <!-- AI Energy Saving Recommendations -->
+                    <div class="glass-card side-widget">
+                        <div class="widget-header">
+                            <h3>💡 Actionable Energy Savings</h3>
+                        </div>
+                        <div class="insights-list" id="insights-container">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Annual Seasonal Profile Row -->
+            <div class="glass-card chart-card" style="margin-bottom: 30px;">
+                <div class="chart-header">
+                    <div class="chart-title-group">
+                        <h3>12-Month Annual Seasonal Profile</h3>
+                        <div class="chart-subtitle">HVAC Cooling summer peaks vs winter heating demand vs baseline load</div>
+                    </div>
+                </div>
+                <div class="chart-canvas-wrapper" style="height: 280px;">
+                    <canvas id="monthlySeasonChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- =========================================================================
+             PAGE VIEW 2: APPLIANCE POWER AUDIT
+             ========================================================================= -->
+        <div id="tab-appliances" class="view-page">
+            <div class="appliance-page-grid">
+                
+                <!-- Left: Full Appliance Power List with Sliders -->
+                <div class="glass-card side-widget" style="margin-bottom: 0;">
+                    <div class="widget-header">
+                        <div>
+                            <h3>Appliance Power Audit & Wattage Breakdown</h3>
+                            <div class="chart-subtitle">Adjust hours/day to simulate real-time monthly bill and energy changes</div>
+                        </div>
+                        <button id="add-appliance-btn" class="btn btn-primary">
+                            + Add Device
+                        </button>
+                    </div>
+                    <div class="appliance-list-grid" id="appliance-list-container">
+                        <!-- Populated dynamically by JS -->
+                    </div>
+                </div>
+
+                <!-- Right: Donut Chart & What-If Off-Peak Simulator -->
+                <div class="side-column">
+                    <!-- Appliance Disaggregation Donut -->
+                    <div class="glass-card side-widget">
+                        <div class="widget-header">
+                            <h3>Category Energy Share</h3>
+                        </div>
+                        <div class="chart-canvas-wrapper compact">
+                            <canvas id="appliancePieChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Interactive "What-If" Scenario Simulator -->
+                    <div class="whatif-card">
+                        <div class="whatif-header">
+                            <span style="font-size: 20px;">🔮</span>
+                            <h4>"What-If" Off-Peak Shift Tool</h4>
+                        </div>
+                        <div class="whatif-body">
+                            <p>Simulate shifting heavy appliances (EV charger, laundry, dishwasher) away from expensive on-peak hours to off-peak hours.</p>
+                            
+                            <div class="whatif-slider-group">
+                                <div class="slider-label-row">
+                                    <span>Shift High Loads to Off-Peak:</span>
+                                    <strong id="scenario-shift-val" style="color: #7C3AED;">2.0 hrs/day</strong>
+                                </div>
+                                <input type="range" id="scenario-shift-slider" class="range-slider" min="0" max="5" step="0.5" value="2">
+                            </div>
+
+                            <div class="whatif-result-banner">
+                                <span class="savings-label">Projected Monthly Savings:</span>
+                                <span class="savings-number" id="scenario-savings-val">$18.50 / mo</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- =========================================================================
+             PAGE VIEW 3: DATA MANAGEMENT & SMART METER INGESTION
+             ========================================================================= -->
+        <div id="tab-data" class="view-page">
+            <section class="glass-card" style="padding: 28px; margin-bottom: 30px;">
+                <div class="widget-header" style="flex-wrap: wrap; gap: 14px;">
+                    <div>
+                        <h3>Smart Meter Ingestion & Data Management</h3>
+                        <div class="chart-subtitle">Import smart meter CSV logs, adjust solar production, set budget limits, or export reports</div>
+                    </div>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <button id="load-sample-data-btn" class="btn btn-secondary">Reload Sample Dataset</button>
+                        <button id="export-csv-btn" class="btn btn-secondary">📥 Export CSV Audit</button>
+                        <button id="print-report-btn" class="btn btn-primary">🖨️ Print Energy Report</button>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px; margin-top: 20px;">
+                    <!-- Drag and Drop CSV Zone -->
+                    <div class="dropzone" id="csv-drop-zone">
+                        <div class="dropzone-icon">📁</div>
+                        <div class="dropzone-text">Drop Smart Meter CSV File Here</div>
+                        <div class="dropzone-sub">or click to browse from computer (supports timestamp, kW, kWh)</div>
+                        <input type="file" id="csv-file-input" accept=".csv" style="display: none;">
+                    </div>
+
+                    <!-- Quick Config Controls Card -->
+                    <div class="glass-card" style="padding: 20px; border: 1px solid var(--border-subtle); display: flex; flex-direction: column; gap: 18px; justify-content: center;">
+                        <div>
+                            <div class="slider-label-row">
+                                <span style="font-size: 13px; font-weight: 600;">Rooftop Solar Monthly Generation:</span>
+                                <strong id="solar-value-label" style="color: var(--primary-blue);">120 kWh</strong>
+                            </div>
+                            <input type="range" id="solar-slider" class="range-slider" min="0" max="600" step="10" value="120" style="accent-color: var(--primary-blue);">
+                            <span style="font-size: 11px; color: var(--text-dim);">Deducts feed-in credits directly from your projected bill</span>
+                        </div>
+
+                        <div>
+                            <div class="slider-label-row">
+                                <span style="font-size: 13px; font-weight: 600;">Monthly Electricity Budget Cap:</span>
+                            </div>
+                            <input type="number" id="budget-input" class="custom-input" value="180" min="20" max="2000" style="width: 100%;">
+                            <span style="font-size: 11px; color: var(--text-dim);">Sets the warning threshold for the monthly budget meter</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Current Data Table Preview -->
+                <div style="margin-top: 30px;">
+                    <h4 style="font-size: 15px; margin-bottom: 12px;">Active Hourly Telemetry Preview (First 12 Hours)</h4>
+                    <div style="overflow-x: auto;">
+                        <table id="telemetry-table" style="width: 100%; border-collapse: collapse; font-size: 12px; text-align: left;">
+                            <thead>
+                                <tr style="background: var(--bg-main); border-bottom: 2px solid var(--border-subtle);">
+                                    <th style="padding: 10px 14px;">Time</th>
+                                    <th style="padding: 10px 14px;">Demand (kW)</th>
+                                    <th style="padding: 10px 14px;">Tariff Tier</th>
+                                    <th style="padding: 10px 14px;">Cost / Hour</th>
+                                </tr>
+                            </thead>
+                            <tbody id="telemetry-table-body">
+                                <!-- Populated dynamically by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+    </div>
+
+    <!-- Modal: Add Custom Appliance -->
+    <div id="appliance-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Add Appliance to Audit</h3>
+                <button id="close-appliance-modal-btn" class="modal-close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Appliance Name</label>
+                    <input type="text" id="new-app-name" class="custom-input" placeholder="e.g. Gaming Rig, Heat Pump, Dehumidifier">
+                </div>
+                <div class="form-group">
+                    <label>Category</label>
+                    <select id="new-app-category" class="custom-select">
+                        <option value="HVAC">HVAC / Climate</option>
+                        <option value="Kitchen">Kitchen</option>
+                        <option value="Laundry">Laundry</option>
+                        <option value="Work & Media">Work & Media</option>
+                        <option value="EV">Electric Vehicle</option>
+                        <option value="Lighting">Lighting</option>
+                        <option value="Utility">Utility / Water</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Rated Power Consumption (Watts)</label>
+                    <input type="number" id="new-app-watts" class="custom-input" placeholder="e.g. 1200" min="5" max="25000">
+                </div>
+                <div class="form-group">
+                    <label>Average Daily Operating Hours</label>
+                    <input type="number" id="new-app-hours" class="custom-input" placeholder="e.g. 4.5" min="0.1" max="24" step="0.5">
+                </div>
+                <div class="form-group">
+                    <label>Icon Style</label>
+                    <select id="new-app-icon" class="custom-select">
+                        <option value="snowflake">❄️ HVAC / Cooler</option>
+                        <option value="car">🚗 Electric Vehicle</option>
+                        <option value="monitor">🖥️ PC / Electronics</option>
+                        <option value="flame">🍳 Cooktop / Microwave</option>
+                        <option value="droplet">💧 Water Heater</option>
+                        <option value="sun">💡 Lighting</option>
+                        <option value="disc">🧺 Washer / Dryer</option>
+                        <option value="sparkles">✨ General Device</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="save-appliance-btn" class="btn btn-primary">Save Appliance</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Tariff Rates Configuration -->
+    <div id="tariff-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Tariff Rates & Surcharges</h3>
+                <button id="close-tariff-modal-btn" class="modal-close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Time-of-Use: On-Peak Rate (per kWh)</label>
+                    <input type="number" id="tou-onpeak-rate" class="custom-input" step="0.01" min="0.01">
+                </div>
+                <div class="form-group">
+                    <label>Time-of-Use: Mid-Peak Rate (per kWh)</label>
+                    <input type="number" id="tou-midpeak-rate" class="custom-input" step="0.01" min="0.01">
+                </div>
+                <div class="form-group">
+                    <label>Time-of-Use: Off-Peak Rate (per kWh)</label>
+                    <input type="number" id="tou-offpeak-rate" class="custom-input" step="0.01" min="0.01">
+                </div>
+                <div class="form-group">
+                    <label>Fixed Monthly Grid / Meter Fee</label>
+                    <input type="number" id="fixed-charge-input" class="custom-input" step="0.50" min="0">
+                </div>
+                <div class="form-group">
+                    <label>Tax & Utility Surcharge (%)</label>
+                    <input type="number" id="tax-rate-input" class="custom-input" step="0.1" min="0">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="save-tariff-btn" class="btn btn-primary">Apply Rates</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application Logic Scripts -->
+    <script src="js/data.js"></script>
+    <script src="js/tariff.js"></script>
+    <script src="js/analytics.js"></script>
+    <script src="js/charts.js"></script>
+    <script src="js/app.js"></script>
+
+    <script>
+        // Wire dropzone click to hidden file input
+        document.getElementById('csv-drop-zone')?.addEventListener('click', () => {
+            document.getElementById('csv-file-input')?.click();
+        });
+    </script>
+</body>
+</html>
